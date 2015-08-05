@@ -370,7 +370,7 @@ class WizardView(TemplateView):
             for step, error_list in e.step_errors.items():
                 if not step in self.storage.extra_data[self.extra_data_validation_error_key]:
                     self.storage.extra_data[self.extra_data_validation_error_key][step] = {}
-                self.storage.extra_data[self.extra_data_validation_error_key][step][self.hashable_data(self.storage.get_step_data(step))] = error_list
+                self.storage.extra_data[self.extra_data_validation_error_key][step][self.hashable_data(self.get_form_step_data(form_dict[step]))] = error_list
                 steps.append(step)
             ordered_steps = list(self.form_list.keys())
             steps.sort(key=lambda s: ordered_steps.index(s))
