@@ -361,10 +361,16 @@ class WizardView(TemplateView):
         except DoneStepValidationError as e:
             if not self.extra_data_validation_error_key in self.storage.extra_data:
                 self.storage.extra_data[self.extra_data_validation_error_key] = {}
+            steps = []
             for step, error_list in e.step_errors.items():
                 if not step in self.storage.extra_data[self.extra_data_validation_error_key]:
                     self.storage.extra_data[self.extra_data_validation_error_key][step] = {}
                 self.storage.extra_data[self.extra_data_validation_error_key][step][self.storage.get_step_data(step)] = error_list
+                steps.append(step)
+            ordered_steps = list(self.form_list.keys())
+            steps.sort(key=lambda s: ordered_steps.index(s))
+            revalidation_step = steps[0]
+            done_response = self.render_revalidation_failure(revalidation_step, final_forms[revalidation_step])
         except RepeatDoneStepError as e:
             done_response = e.response
         else:
