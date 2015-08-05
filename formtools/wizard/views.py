@@ -10,6 +10,8 @@ from django.utils.decorators import classonlymethod
 from django.utils.translation import ugettext as _
 from django.utils import six
 
+from json import dumps
+
 from .storage import get_storage
 from .storage.exceptions import NoFileStorageConfigured
 from .forms import ManagementForm
@@ -331,7 +333,10 @@ class WizardView(TemplateView):
             data=self.storage.get_step_data(self.steps.current),
             files=self.storage.get_step_files(self.steps.current))
         return self.render(form)
-
+    
+    def hashable_data(self, data):
+        return dumps(data, sort_keys=True, separators=(',',':'))
+    
     def render_done(self, form, **kwargs):
         """
         This method gets called when all forms passed. The method should also
@@ -365,7 +370,7 @@ class WizardView(TemplateView):
             for step, error_list in e.step_errors.items():
                 if not step in self.storage.extra_data[self.extra_data_validation_error_key]:
                     self.storage.extra_data[self.extra_data_validation_error_key][step] = {}
-                self.storage.extra_data[self.extra_data_validation_error_key][step][self.storage.get_step_data(step)] = error_list
+                self.storage.extra_data[self.extra_data_validation_error_key][step][self.hashable_data(self.storage.get_step_data(step))] = error_list
                 steps.append(step)
             ordered_steps = list(self.form_list.keys())
             steps.sort(key=lambda s: ordered_steps.index(s))
@@ -451,7 +456,7 @@ class WizardView(TemplateView):
         form = form_class(**kwargs)
         done_step_errors = self.storage.extra_data.get(
             self.extra_data_validation_error_key, {}
-        ).get(step, {}).get(self.storage.get_step_data(step), [])
+        ).get(step, {}).get(self.hashable_data(self.storage.get_step_data(step)), [])
         for error in done_step_errors:
             form.add_error(None, error)
         return form
