@@ -13,7 +13,7 @@ from django.utils import six
 from .storage import get_storage
 from .storage.exceptions import NoFileStorageConfigured
 from .forms import ManagementForm
-from .exceptions import RepeatDoneStepError
+from .exceptions import DoneStepValidationError, RepeatDoneStepError
 
 
 def normalize_name(name):
@@ -108,6 +108,7 @@ class WizardView(TemplateView):
     instance_dict = None
     condition_dict = None
     template_name = 'formtools/wizard/wizard_form.html'
+    extra_data_validation_error_key = "DoneStepValidationError"
 
     def __repr__(self):
         return '<%s: forms: %s>' % (self.__class__.__name__, self.form_list)
@@ -357,6 +358,13 @@ class WizardView(TemplateView):
             done_response = self.done(final_forms.values(),
                                       form_dict=final_forms,
                                       **kwargs)
+        except DoneStepValidationError as e:
+            if not self.extra_data_validation_error_key in self.storage.extra_data:
+                self.storage.extra_data[self.extra_data_validation_error_key] = {}
+            for step, error_list in e.step_errors.items():
+                if not step in self.storage.extra_data[self.extra_data_validation_error_key]:
+                    self.storage.extra_data[self.extra_data_validation_error_key][step] = {}
+                self.storage.extra_data[self.extra_data_validation_error_key][step][self.storage.get_step_data(step)] = error_list
         except RepeatDoneStepError as e:
             done_response = e.response
         else:
@@ -434,7 +442,13 @@ class WizardView(TemplateView):
             # If the form is based on ModelFormSet, add queryset if available
             # and not previous set.
             kwargs.setdefault('queryset', self.get_form_instance(step))
-        return form_class(**kwargs)
+        form = form_class(**kwargs)
+        done_step_errors = self.storage.extra_data.get(
+            self.extra_data_validation_error_key, {}
+        ).get(step, {}).get(self.storage.get_step_data(step), [])
+        for error in done_step_errors:
+            form.add_error(None, error)
+        return form
 
     def process_step(self, form):
         """
