@@ -456,7 +456,7 @@ class WizardView(TemplateView):
         form = form_class(**kwargs)
         done_step_errors = self.storage.extra_data.get(
             self.extra_data_validation_error_key, {}
-        ).get(step, {}).get(self.hashable_data(self.storage.get_step_data(step)), [])
+        ).get(step, {}).get(self.hashable_data(data), [])
         for error in done_step_errors:
             form.add_error(None, error)
         return form
