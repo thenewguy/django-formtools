@@ -13,6 +13,7 @@ from django.utils import six
 from .storage import get_storage
 from .storage.exceptions import NoFileStorageConfigured
 from .forms import ManagementForm
+from .exceptions import RepeatDoneStepError
 
 
 def normalize_name(name):
@@ -352,10 +353,14 @@ class WizardView(TemplateView):
         # render the done view and reset the wizard before returning the
         # response. This is needed to prevent from rendering done with the
         # same data twice.
-        done_response = self.done(final_forms.values(),
-                                  form_dict=final_forms,
-                                  **kwargs)
-        self.storage.reset()
+        try:
+            done_response = self.done(final_forms.values(),
+                                      form_dict=final_forms,
+                                      **kwargs)
+        except RepeatDoneStepError as e:
+            done_response = e.response
+        else:
+            self.storage.reset()
         return done_response
 
     def get_form_prefix(self, step=None, form=None):
